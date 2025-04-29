@@ -1,19 +1,9 @@
 package config
 
-import "time"
-
 // Server 配置
 const (
 	DefaultPort = "80"
 	DefaultDir  = "static"
-)
-
-// AP 热点配置
-const (
-	AP_SSID      = "HlameMastar"
-	AP_PASSWORD  = "12345678"
-	AP_INTERFACE = "wlan0"
-	AP_IP        = "192.168.4.1"
 )
 
 // 音频相关配置
@@ -21,21 +11,17 @@ const (
 	MaxVolume = 63
 )
 
-// 网络相关配置
-const (
-	WifiCheckInterval  = 5 * time.Second  // WiFi 状态检查间隔
-	WifiConnectTimeout = 30 * time.Second // WiFi 连接超时时间
-)
-
-// 文件路径配置
-const (
-	WPAConfigPath     = "/etc/wpa_supplicant.conf"
-	HostAPDConfigPath = "/etc/hostapd.conf"
-)
-
 // 小智AI服务配置
 const (
 	XiaozhiSoundPath = "/home/aku/xiaozhi/XIAOZHI_AI_SOUND" // 小智AI声音服务路径
 	XiaozhiMainPath  = "/home/aku/xiaozhi/XIAOZHI_AI_MAIN"  // 小智AI主服务路径
 	XiaozhiGuiPath   = "/home/aku/xiaozhi/XIAOZHI_AI_GUI"   // 小智AI GUI服务路径
+)
+
+// 底包程序配置
+const (
+	ShowImgPath   = "/opt/aku/xiaozhi/show_image"        // 显示图片程序路径
+	ShowGifPath   = "/opt/aku/xiaozhi/play_bmp_sequence" // 播放GIF动画程序路径
+	ShowTextPath  = "/opt/aku/xiaozhi/show_text"         // 显示文字程序路径
+	ShowVideoPath = "/opt/aku/xiaozhi/play_video"        // 播放视频程序路径
 )

@@ -27,9 +27,6 @@ func RegisterRoutes() {
 	http.HandleFunc("/api/volume/get", api.HandleVolumeGet)
 	http.HandleFunc("/api/volume/set", api.HandleVolumeSet)
 
-	// WiFi 配置路由
-	http.HandleFunc("/api/wifi/config", api.HandleApConfig)
-
 	// 歌单相关路由
 	http.HandleFunc("/api/playlist/detail", api.HandlePlaylistDetail)
 	http.HandleFunc("/api/playlist/play", api.HandlePlaylistPlay)
@@ -40,10 +37,8 @@ func RegisterRoutes() {
 	http.HandleFunc("/api/service/output", api.HandleServiceOutput)
 	http.HandleFunc("/api/service/status", api.HandleServiceStatus)
 
-	// 添加重启设备的路由
-	http.HandleFunc("/api/system/reboot", handleSystemReboot)
-
-	// 系统信息路由
+	// 系统相关路由
+	http.HandleFunc("/api/system/reboot", api.HandleSystemReboot)
 	http.HandleFunc("/api/system/info", api.HandleSystemInfo)
 	http.HandleFunc("/api/system/sync-time", api.HandleSyncTime)
 

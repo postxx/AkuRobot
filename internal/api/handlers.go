@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -15,7 +16,6 @@ import (
 	"aku-web/internal/netease"
 	"aku-web/internal/player"
 	"aku-web/internal/service"
-	"aku-web/internal/wifi"
 )
 
 // HtmlFile 表示 HTML 文件信息
@@ -161,40 +161,6 @@ func HandleVolumeSet(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// HandleApConfig 处理 WiFi 配置的请求
-func HandleApConfig(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	var request struct {
-		SSID     string `json:"ssid"`
-		Password string `json:"password"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if request.SSID == "" {
-		http.Error(w, "SSID cannot be empty", http.StatusBadRequest)
-		return
-	}
-
-	log.Printf("收到 WiFi 配置请求 - SSID: %s", request.SSID)
-	if err := wifi.ConfigureWifi(request.SSID, request.Password); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to configure WiFi: %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"status":  "success",
-		"message": "WiFi configuration updated",
-	})
-}
-
 // HandlePlaylistPlay 处理播放歌单歌曲的请求
 func HandlePlaylistPlay(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -289,12 +255,14 @@ func HandleGetHtmlFiles(w http.ResponseWriter, r *http.Request) {
 			switch file.Name() {
 			case "music_url.html":
 				description = "支持网易云音乐歌单和流媒体播放"
-			case "ap_config.html":
-				description = "配置设备的 WiFi 连接"
 			case "music_user.html":
 				description = "本地音乐播放"
 			case "index.html":
 				continue // 跳过 index.html
+			case "service.html":
+				description = "管理和监控第三方系统服务状态"
+			case "system.html":
+				description = "查看系统信息和硬件状态"
 			}
 
 			htmlFiles = append(htmlFiles, HtmlFile{
@@ -380,7 +348,7 @@ func HandleServiceOutput(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	
+
 	// 设置 SSE 头
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -448,4 +416,25 @@ func HandleServiceStatus(w http.ResponseWriter, r *http.Request) {
 	status := svc.GetStatus()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(status)
+}
+
+// HandleSystemReboot 处理系统重启请求
+func HandleSystemReboot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 返回成功响应
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"status":  "success",
+		"message": "System is rebooting...",
+	})
+
+	// 异步执行重启命令
+	go func() {
+		time.Sleep(1 * time.Second) // 等待响应发送完成
+		exec.Command("reboot").Run()
+	}()
 }
