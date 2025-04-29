@@ -22,6 +22,10 @@ func RegisterRoutes() {
 	http.HandleFunc("/api/music/play", api.HandlePlayMusic)
 	http.HandleFunc("/api/music/stream", api.HandleStreamPlay)
 	http.HandleFunc("/api/music/stop", api.HandleStreamStop)
+	http.HandleFunc("/api/music/duration", api.HandleGetAudioDuration)
+	http.HandleFunc("/api/music/pause", api.HandlePauseMusic)
+	http.HandleFunc("/api/music/resume", api.HandleResumeMusic)
+	http.HandleFunc("/api/music/seek", api.HandleSeekTo)
 
 	// 音量控制路由
 	http.HandleFunc("/api/volume/get", api.HandleVolumeGet)

@@ -88,15 +88,14 @@ func HandleStreamPlay(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request struct {
-		URL      string  `json:"url"`
-		Position float64 `json:"position"`
+		URL string `json:"url"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	if err := player.PlayStream(request.URL, request.Position); err != nil {
+	if err := player.PlayStream(request.URL); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to play stream: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -437,4 +436,101 @@ func HandleSystemReboot(w http.ResponseWriter, r *http.Request) {
 		time.Sleep(1 * time.Second) // 等待响应发送完成
 		exec.Command("reboot").Run()
 	}()
+}
+
+// HandleGetAudioDuration 处理获取音频时长的请求
+func HandleGetAudioDuration(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// 获取URL参数
+	url := r.URL.Query().Get("url")
+	if url == "" {
+		http.Error(w, "Missing url parameter", http.StatusBadRequest)
+		return
+	}
+
+	// 获取音频时长
+	duration, err := player.GetAudioDuration(url)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("获取音频时长失败: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 构建响应
+	response := struct {
+		Minutes      int     `json:"minutes"`
+		Seconds      int     `json:"seconds"`
+		Centiseconds int     `json:"centiseconds"`
+		TotalSeconds float64 `json:"total_seconds"`
+		TotalFrames  int     `json:"total_frames"`
+		Formatted    string  `json:"formatted"` // 格式化的时间字符串
+	}{
+		Minutes:      duration.Minutes,
+		Seconds:      duration.Seconds,
+		Centiseconds: duration.Centiseconds,
+		TotalSeconds: duration.TotalSeconds,
+		TotalFrames:  duration.TotalFrames,
+		Formatted:    fmt.Sprintf("%02d:%02d.%02d", duration.Minutes, duration.Seconds, duration.Centiseconds),
+	}
+
+	// 设置响应头
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// HandlePauseMusic 处理暂停播放请求
+func HandlePauseMusic(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := player.PausePlayback(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// HandleResumeMusic 处理继续播放请求
+func HandleResumeMusic(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	if err := player.ResumePlayback(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// HandleSeekTo 处理跳转请求
+func HandleSeekTo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var request struct {
+		Position float64 `json:"position"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := player.SeekTo(request.Position); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

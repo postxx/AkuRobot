@@ -81,6 +81,17 @@
             text-align: center;
             color: #666;
         }
+        .duration-button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            background-color: #2196F3;
+        }
+        .duration-button:hover {
+            background-color: #1976D2;
+        }
     </style>
 </head>
 <body>
@@ -157,6 +168,7 @@
                             <div class="button-group">
                                 <button class="play-button" onclick="musicPlayer.playMusic('${music}')">播放</button>
                                 <button class="stop-button" onclick="musicPlayer.stopMusic()">停止</button>
+                                <button class="duration-button" onclick="musicPlayer.getDuration('${music}')">时长</button>
                             </div>
                         `;
                         container.appendChild(div);
@@ -190,6 +202,9 @@
                             item.classList.add('active');
                         }
                     });
+
+                    // 获取并显示音频时长
+                    this.getDuration(filename);
                 } catch (error) {
                     this.showStatus('播放失败: ' + error.message, true);
                 }
@@ -214,6 +229,22 @@
                     });
                 } catch (error) {
                     this.showStatus('停止播放失败: ' + error.message, true);
+                }
+            },
+
+            getDuration: async function(filename) {
+                try {
+                    const musicPath = encodeURIComponent(`${window.location.origin}/music/${filename}`);
+                    const response = await fetch(`/api/music/duration?url=${musicPath}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('获取时长失败');
+                    }
+
+                    const data = await response.json();
+                    this.showStatus(`${filename} 的时长: ${data.formatted}`);
+                } catch (error) {
+                    this.showStatus('获取时长失败: ' + error.message, true);
                 }
             },
 

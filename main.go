@@ -38,21 +38,6 @@ func printColorized(color, format string, a ...interface{}) {
 	fmt.Printf(color+format+colorReset+"\n", a...)
 }
 
-func showProgress(prefix string, duration time.Duration) {
-	steps := 20
-	delay := duration / time.Duration(steps)
-
-	fmt.Printf("%s [", prefix)
-	for i := 0; i < steps; i++ {
-		time.Sleep(delay)
-		fmt.Printf(colorGreen + "=" + colorReset)
-		if i < steps-1 {
-			fmt.Printf(">")
-		}
-		fmt.Printf("\b")
-	}
-	fmt.Printf("] %s完成%s\n", colorGreen, colorReset)
-}
 
 func main() {
 	// 清屏
@@ -60,11 +45,6 @@ func main() {
 
 	// 打印炫酷的启动画面
 	fmt.Print(colorCyan + banner + colorReset)
-	time.Sleep(1 * time.Second)
-
-	// 显示初始化进度
-	printColorized(colorMagenta, "\n=== 系统初始化 ===")
-	showProgress("初始化日志系统    ", 500*time.Millisecond)
 
 	// 设置日志输出到控制台和文件
 	logFile, err := os.OpenFile("aku-web.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
@@ -79,9 +59,6 @@ func main() {
 		}
 	}
 
-	showProgress("加载系统配置      ", 300*time.Millisecond)
-	showProgress("初始化服务模块    ", 400*time.Millisecond)
-	showProgress("检查系统依赖      ", 600*time.Millisecond)
 
 	// 打印系统信息
 	printColorized(colorMagenta, "\n=== Aku Web 启动信息 ===")

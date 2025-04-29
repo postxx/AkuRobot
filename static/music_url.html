@@ -167,6 +167,93 @@
             opacity: 0.7;
             cursor: wait;
         }
+        .duration-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            background-color: #2196F3;
+            font-size: 14px;
+        }
+        .duration-button:hover {
+            background-color: #1976D2;
+        }
+        .duration-button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+        /* 播放控制模块样式 */
+        .playback-control {
+            margin-top: 20px;
+            padding: 15px;
+            border-top: 1px solid #eee;
+            display: none;
+        }
+        .playback-control.active {
+            display: block;
+        }
+        .progress-container {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 5px;
+            background-color: #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            position: relative;
+        }
+        .progress-current {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+        .progress-hover {
+            position: absolute;
+            top: -25px;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+        }
+        .progress-bar:hover .progress-hover {
+            display: block;
+        }
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .control-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            align-items: center;
+        }
+        .control-button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            color: white;
+            font-size: 14px;
+            background-color: #4CAF50;
+        }
+        .control-button:hover {
+            opacity: 0.9;
+        }
+        .control-button.pause {
+            background-color: #FFA000;
+        }
     </style>
 </head>
 <body>
@@ -186,6 +273,24 @@
             <div class="button-group">
                 <button class="play-button" onclick="streamPlayer.playStream()">播放</button>
                 <button class="stop-button" onclick="streamPlayer.stopStream()">停止</button>
+                <button class="duration-button" onclick="streamPlayer.getDuration()">时长</button>
+            </div>
+            
+            <!-- 播放控制模块 -->
+            <div id="playbackControl" class="playback-control">
+                <div class="progress-container">
+                    <div class="progress-bar" id="progressBar">
+                        <div class="progress-current" id="progressCurrent"></div>
+                        <div class="progress-hover" id="progressHover">00:00</div>
+                    </div>
+                    <div class="time-display">
+                        <span id="currentTime">00:00</span>
+                        <span id="totalTime">00:00</span>
+                    </div>
+                </div>
+                <div class="control-buttons">
+                    <button class="control-button pause" onclick="streamPlayer.togglePause()">暂停</button>
+                </div>
             </div>
         </div>
 
@@ -226,6 +331,46 @@
         }
 
         const streamPlayer = {
+            isPlaying: false,
+            isPaused: false,
+            currentPosition: 0,
+            totalDuration: 0,
+            progressInterval: null,
+            startTime: null,
+            currentUrl: null,
+
+            formatTime: function(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            },
+
+            updateProgress: function() {
+                if (!this.isPlaying || this.isPaused) return;
+                
+                const now = Date.now();
+                const elapsed = (now - this.startTime) / 1000;
+                const currentTime = this.currentPosition + elapsed;
+                
+                document.getElementById('currentTime').textContent = this.formatTime(currentTime);
+                
+                if (this.totalDuration > 0) {
+                    const progress = (currentTime / this.totalDuration) * 100;
+                    document.getElementById('progressCurrent').style.width = `${Math.min(progress, 100)}%`;
+                }
+            },
+
+            startProgressTracking: function() {
+                this.progressInterval = setInterval(() => this.updateProgress(), 100);
+            },
+
+            stopProgressTracking: function() {
+                if (this.progressInterval) {
+                    clearInterval(this.progressInterval);
+                    this.progressInterval = null;
+                }
+            },
+
             playStream: async function() {
                 const url = document.getElementById('urlInput').value;
                 if (!url) {
@@ -234,6 +379,21 @@
                 }
 
                 try {
+                    // 如果正在播放，先停止
+                    if (this.isPlaying) {
+                        await this.stopStream();
+                    }
+
+                    // 获取音频时长
+                    const durationResponse = await fetch(`/api/music/duration?url=${encodeURIComponent(url)}`);
+                    if (!durationResponse.ok) {
+                        throw new Error('获取时长失败');
+                    }
+                    const durationData = await durationResponse.json();
+                    this.totalDuration = parseFloat(durationData.total_seconds);
+                    document.getElementById('totalTime').textContent = this.formatTime(this.totalDuration);
+
+                    // 开始播放
                     const response = await fetch('/api/music/stream', {
                         method: 'POST',
                         headers: {
@@ -246,6 +406,15 @@
                         throw new Error('播放失败');
                     }
 
+                    this.isPlaying = true;
+                    this.isPaused = false;
+                    this.startTime = Date.now();
+                    this.currentUrl = url;
+                    this.currentPosition = 0;
+                    this.startProgressTracking();
+                    
+                    document.getElementById('playbackControl').classList.add('active');
+                    document.querySelector('.control-button.pause').textContent = '暂停';
                     showStatus(`正在播放: ${url}`);
                 } catch (error) {
                     showStatus('播放失败: ' + error.message, true);
@@ -262,9 +431,101 @@
                         throw new Error('停止播放失败');
                     }
 
+                    this.isPlaying = false;
+                    this.isPaused = false;
+                    this.currentPosition = 0;
+                    this.currentUrl = null;
+                    this.stopProgressTracking();
+                    document.getElementById('playbackControl').classList.remove('active');
+                    document.getElementById('progressCurrent').style.width = '0%';
+                    document.getElementById('currentTime').textContent = '00:00';
                     showStatus('已停止播放');
                 } catch (error) {
                     showStatus('停止播放失败: ' + error.message, true);
+                }
+            },
+
+            togglePause: async function() {
+                if (!this.isPlaying) return;
+
+                try {
+                    const endpoint = this.isPaused ? '/api/music/resume' : '/api/music/pause';
+                    const response = await fetch(endpoint, {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(this.isPaused ? '继续播放失败' : '暂停播放失败');
+                    }
+
+                    this.isPaused = !this.isPaused;
+                    if (this.isPaused) {
+                        // 暂停时，记录当前播放位置
+                        const elapsed = (Date.now() - this.startTime) / 1000;
+                        this.currentPosition += elapsed;
+                        this.stopProgressTracking();
+                        document.querySelector('.control-button.pause').textContent = '继续';
+                    } else {
+                        // 继续播放时，重置开始时间
+                        this.startTime = Date.now();
+                        this.startProgressTracking();
+                        document.querySelector('.control-button.pause').textContent = '暂停';
+                    }
+                } catch (error) {
+                    showStatus(error.message, true);
+                }
+            },
+
+            seekTo: async function(position) {
+                if (!this.isPlaying) return;
+                
+                try {
+                    const response = await fetch('/api/music/seek', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ position }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('跳转失败');
+                    }
+
+                    // 更新播放状态
+                    this.currentPosition = position;
+                    this.startTime = Date.now();
+                    
+                    // 如果当前是暂停状态，重新开始播放
+                    if (this.isPaused) {
+                        this.isPaused = false;
+                        this.startProgressTracking();
+                        document.querySelector('.control-button.pause').textContent = '暂停';
+                    }
+                } catch (error) {
+                    showStatus('跳转失败: ' + error.message, true);
+                }
+            },
+
+            getDuration: async function() {
+                const url = document.getElementById('urlInput').value;
+                if (!url) {
+                    showStatus('请输入有效的 URL', true);
+                    return;
+                }
+
+                try {
+                    showStatus('正在获取音频时长...', false, true);
+                    const response = await fetch(`/api/music/duration?url=${encodeURIComponent(url)}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('获取时长失败');
+                    }
+
+                    const data = await response.json();
+                    showStatus(`音频时长: ${data.formatted}`);
+                } catch (error) {
+                    showStatus('获取时长失败: ' + error.message, true);
                 }
             }
         };
@@ -534,6 +795,29 @@
             });
 
             playlistPlayer.initScrollLoad();
+
+            // 进度条事件处理
+            const progressBar = document.getElementById('progressBar');
+            const progressHover = document.getElementById('progressHover');
+
+            // 鼠标移动时显示时间
+            progressBar.addEventListener('mousemove', function(e) {
+                const rect = this.getBoundingClientRect();
+                const position = (e.clientX - rect.left) / rect.width;
+                const time = position * streamPlayer.totalDuration;
+                progressHover.textContent = streamPlayer.formatTime(time);
+                progressHover.style.left = `${e.clientX - rect.left}px`;
+            });
+
+            // 点击跳转
+            progressBar.addEventListener('click', function(e) {
+                if (!streamPlayer.isPlaying) return;
+                
+                const rect = this.getBoundingClientRect();
+                const position = (e.clientX - rect.left) / rect.width;
+                const newPosition = position * streamPlayer.totalDuration;
+                streamPlayer.seekTo(newPosition);
+            });
         });
     </script>
 </body>
