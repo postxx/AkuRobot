@@ -1,0 +1,1346 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网易云歌单播放器</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff4e4e;
+            --secondary-color: #ffffff;
+            --text-color: #333333;
+            --text-secondary: #666666;
+            --background-dark: #252525;
+            --background-light: #ffffff;
+            --progress-bg: #e0e0e0;
+            --hover-color: rgba(255, 78, 78, 0.1);
+            --active-color: #ff3333;
+            --error-color: #f44336;
+            --success-color: #4CAF50;
+            --card-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            --transition-speed: 0.3s;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #2c2c2c, #1a1a1a);
+            color: var(--text-color);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .player-container {
+            width: 95%;
+            max-width: 1200px;
+            min-height: 600px;
+            background: var(--background-light);
+            border-radius: 20px;
+            display: flex;
+            overflow: hidden;
+            box-shadow: var(--card-shadow);
+        }
+
+        .sidebar {
+            width: 300px;
+            background: var(--background-dark);
+            padding: 30px;
+            color: var(--secondary-color);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            background: var(--background-light);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: var(--text-secondary);
+            display: none;
+        }
+
+        .empty-state.active {
+            display: block;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 20px;
+            color: var(--primary-color);
+            opacity: 0.5;
+        }
+
+        .empty-state h2 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--text-color);
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .playlist-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .playlist-title {
+            font-size: 2em;
+            color: var(--secondary-color);
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .playlist-subtitle {
+            color: var(--text-secondary);
+            margin-top: 5px;
+            font-size: 0.9em;
+        }
+
+        .input-group {
+            margin: 25px 0;
+            position: relative;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            color: var(--secondary-color);
+            font-weight: bold;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all var(--transition-speed) ease;
+            outline: none;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--secondary-color);
+        }
+
+        .input-group input:focus {
+            border-color: var(--primary-color);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all var(--transition-speed) ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .btn i {
+            font-size: 16px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--active-color);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 78, 78, 0.3);
+        }
+
+        .song-list {
+            margin-top: 20px;
+            width: 100%;
+            display: none;
+            padding-bottom: 100px;
+            max-height: calc(100vh - 300px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-color) var(--progress-bg);
+        }
+
+        .song-list.active {
+            display: block;
+        }
+
+        .song-item {
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            transition: all var(--transition-speed) ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            min-width: 0;
+        }
+
+        .song-item:hover {
+            background: var(--hover-color);
+            transform: translateX(5px);
+        }
+
+        .song-item.active {
+            background: var(--hover-color);
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .song-item.vip-song {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .song-item.vip-song .song-title {
+            color: #999;
+        }
+
+        .song-item.vip-song .song-artist {
+            color: #bbb;
+        }
+
+        .song-item.vip-song:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .vip-badge {
+            background: #999;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+
+        .control-btn.disabled {
+            background: #ddd;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        .control-btn.disabled:hover {
+            transform: none;
+            background: #ddd;
+        }
+
+        .song-index {
+            width: 30px;
+            text-align: center;
+            font-weight: bold;
+            color: var(--text-secondary);
+        }
+
+        .song-info {
+            flex: 1;
+            margin: 0 15px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .song-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .song-artist {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .song-duration {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            margin-left: auto;
+            padding: 0 10px;
+            flex-shrink: 0;
+        }
+
+        .song-controls {
+            display: none;
+            position: absolute;
+            right: 15px;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .song-item:hover .song-controls {
+            display: flex;
+        }
+
+        .control-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+            background: var(--active-color);
+        }
+
+        .now-playing {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 95%;
+            max-width: 1200px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: slideUp 0.3s ease;
+            border-radius: 12px 12px 0 0;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+
+        .now-playing.active {
+            display: flex;
+            align-items: center;
+        }
+
+        .now-playing-info {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .now-playing-image {
+            width: 60px;
+            height: 60px;
+            border-radius: 10px;
+            object-fit: cover;
+        }
+
+        .now-playing-details {
+            flex: 1;
+        }
+
+        .now-playing-title {
+            font-weight: bold;
+            color: var(--text-color);
+            margin-bottom: 4px;
+        }
+
+        .now-playing-artist {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+
+        .playback-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .playback-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all var(--transition-speed) ease;
+        }
+
+        .playback-btn:hover {
+            transform: scale(1.1);
+            background: var(--active-color);
+        }
+
+        .playback-btn.play-pause {
+            width: 50px;
+            height: 50px;
+        }
+
+        .progress-container {
+            flex: 1;
+            margin: 0 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: var(--progress-bg);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .progress-current {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .progress-hover-time {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            bottom: 100%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        .progress-hover-time::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 4px;
+            border-style: solid;
+            border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+        }
+
+        .progress-bar:hover .progress-hover-time {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 5px;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            padding: 0 10px;
+        }
+
+        .volume-control:hover .volume-slider-container,
+        .volume-slider-container:hover {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .volume-slider-container {
+            display: flex;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(10px);
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            width: 40px;
+        }
+
+        .volume-slider {
+            position: relative;
+            width: 100px;
+            height: 8px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--progress-bg);
+            border-radius: 4px;
+            outline: none;
+            transform: rotate(-90deg);
+            cursor: pointer;
+            margin: 46px 0;
+        }
+
+        .volume-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            border: 2px solid white;
+            margin-top: -4px;
+        }
+
+        .volume-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: var(--progress-bg);
+            border-radius: 4px;
+        }
+
+        /* Firefox */
+        .volume-slider::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            border: 2px solid white;
+            margin-top: -4px;
+        }
+
+        .volume-slider::-moz-range-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: var(--progress-bg);
+            border-radius: 4px;
+        }
+
+        /* Microsoft Edge */
+        .volume-slider::-ms-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            border: 2px solid white;
+            margin-top: -4px;
+        }
+
+        .volume-slider::-ms-track {
+            width: 100%;
+            height: 8px;
+            cursor: pointer;
+            background: transparent;
+            border-color: transparent;
+            color: transparent;
+        }
+
+        .volume-slider::-ms-fill-lower {
+            background: var(--primary-color);
+            border-radius: 4px;
+        }
+
+        .volume-slider::-ms-fill-upper {
+            background: var(--progress-bg);
+            border-radius: 4px;
+        }
+
+        .volume-slider:hover::-webkit-slider-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 2px 8px rgba(255, 78, 78, 0.3);
+        }
+
+        .volume-slider:hover::-moz-range-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 2px 8px rgba(255, 78, 78, 0.3);
+        }
+
+        .volume-slider:hover::-ms-thumb {
+            transform: scale(1.2);
+            box-shadow: 0 2px 8px rgba(255, 78, 78, 0.3);
+        }
+
+        .volume-value {
+            font-size: 12px;
+            color: var(--text-secondary);
+            user-select: none;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        .volume-control i {
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+
+        .volume-control i:hover {
+            color: var(--primary-color);
+        }
+
+        .playing-animation {
+            display: none;
+        }
+
+        .playing-animation.active {
+            display: flex;
+        }
+
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 25px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .status.success {
+            border-left: 4px solid var(--success-color);
+        }
+
+        .status.error {
+            border-left: 4px solid var(--error-color);
+        }
+
+        .status.loading {
+            border-left: 4px solid var(--primary-color);
+        }
+
+        /* 自定义滚动条 */
+        .main-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .main-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .main-content::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        /* 加载动画 */
+        .loading-animation {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            margin: 20px 0;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: bounce 0.5s ease-in-out infinite;
+        }
+
+        .loading-dot:nth-child(2) { animation-delay: 0.1s; }
+        .loading-dot:nth-child(3) { animation-delay: 0.2s; }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        /* 播放动画 */
+        .playing-bar {
+            width: 2px;
+            height: 100%;
+            background: var(--primary-color);
+            animation: soundBars 0.5s ease-in-out infinite;
+        }
+
+        @keyframes soundBars {
+            0%, 100% { height: 20%; }
+            50% { height: 100%; }
+        }
+
+        .playing-bar:nth-child(2) { animation-delay: 0.1s; }
+        .playing-bar:nth-child(3) { animation-delay: 0.2s; }
+        .playing-bar:nth-child(4) { animation-delay: 0.3s; }
+
+        /* 加载更多动画 */
+        .load-more {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        .load-more.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .loading-spinner .dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .loading-spinner .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            animation: loadingDot 1s ease-in-out infinite;
+        }
+
+        .loading-spinner .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-spinner .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes loadingDot {
+            0%, 100% { transform: scale(0.5); opacity: 0.5; }
+            50% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="player-container">
+        <div class="sidebar">
+            <div class="playlist-header">
+                <h1 class="playlist-title">网易云歌单</h1>
+                <p class="playlist-subtitle">输入歌单ID开始播放</p>
+            </div>
+
+            <div class="input-group">
+                <label for="playlistInput">歌单 ID</label>
+                <input type="text" id="playlistInput" placeholder="请输入网易云音乐歌单ID">
+            </div>
+
+            <button class="btn btn-primary" onclick="playlistPlayer.loadPlaylist()">
+                <i class="fas fa-cloud-download-alt"></i> 加载歌单
+            </button>
+        </div>
+
+        <div class="main-content">
+            <div id="emptyState" class="empty-state active">
+                <i class="fas fa-music"></i>
+                <h2>还没有加载歌单</h2>
+                <p>在左侧输入网易云音乐歌单ID，开始享受音乐之旅吧！</p>
+            </div>
+            <div id="songList" class="song-list"></div>
+        </div>
+
+        <div id="nowPlaying" class="now-playing">
+            <div class="now-playing-info">
+                <div id="playingAnimation" class="playing-animation">
+                    <div class="playing-bar"></div>
+                    <div class="playing-bar"></div>
+                    <div class="playing-bar"></div>
+                    <div class="playing-bar"></div>
+                </div>
+                <div class="now-playing-details">
+                    <div class="now-playing-title">未在播放</div>
+                    <div class="now-playing-artist">-</div>
+                </div>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-current" id="progressCurrent"></div>
+                    <div class="progress-hover-time" id="progressHoverTime">00:00</div>
+                </div>
+                <div class="time-display">
+                    <span id="currentTime">00:00</span>
+                    <span id="totalTime">00:00</span>
+                </div>
+            </div>
+
+            <div class="playback-controls">
+                <button class="playback-btn" onclick="playlistPlayer.playPrevious()">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="playback-btn play-pause" onclick="playlistPlayer.togglePlay()">
+                    <i class="fas fa-play" id="playPauseIcon"></i>
+                </button>
+                <button class="playback-btn" onclick="playlistPlayer.playNext()">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+            </div>
+
+            <div class="volume-control">
+                <i class="fas fa-volume-up"></i>
+                <div class="volume-slider-container">
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="63" step="1">
+                    <span class="volume-value" id="volumeValue">100%</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <script>
+        const playlistPlayer = {
+            currentPlaylist: [],
+            currentIndex: -1,
+            isPlaying: false,
+            isPaused: false,
+            currentPosition: 0,
+            totalDuration: 0,
+            progressInterval: null,
+            startTime: null,
+            isLoading: false,
+            hasMore: true,
+
+            formatTime: function(seconds) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            },
+
+            loadPlaylist: async function() {
+                const playlistId = document.getElementById('playlistInput').value;
+                if (!playlistId) {
+                    showStatus('请输入歌单ID', true);
+                    return;
+                }
+
+                try {
+                    showStatus('正在加载歌单...', false, true);
+                    const response = await fetch(`/api/playlist/detail?id=${playlistId}`);
+                    if (!response.ok) {
+                        throw new Error('加载歌单失败');
+                    }
+
+                    const result = await response.json();
+                    if (!result.songs || result.songs.length === 0) {
+                        throw new Error('歌单为空或无法访问');
+                    }
+
+                    this.currentPlaylist = result.songs;
+                    this.displaySongs();
+                    showStatus(`已加载 ${this.currentPlaylist.length} 首歌曲`);
+                    
+                    // 显示播放控制栏
+                    document.getElementById('nowPlaying').classList.add('active');
+
+                    // 初始化滚动加载
+                    this.initScrollLoad();
+                } catch (error) {
+                    showStatus(error.message, true);
+                }
+            },
+
+            initScrollLoad: function() {
+                const songList = document.getElementById('songList');
+                songList.addEventListener('scroll', () => {
+                    if (songList.scrollHeight - songList.scrollTop <= songList.clientHeight + 100) {
+                        // 触发加载更多
+                        this.loadMoreSongs();
+                    }
+                });
+            },
+
+            loadMoreSongs: async function() {
+                if (this.isLoading || !this.hasMore) return;
+
+                this.isLoading = true;
+                const loadMore = document.getElementById('loadMore');
+                if (loadMore) {
+                    loadMore.classList.add('active');
+                }
+
+                const playlistId = document.getElementById('playlistInput').value;
+                const currentLength = this.currentPlaylist.length;
+
+                try {
+                    const response = await fetch(`/api/playlist/detail?id=${playlistId}&offset=${currentLength}`);
+                    if (!response.ok) {
+                        throw new Error('加载更多歌曲失败');
+                    }
+
+                    const result = await response.json();
+                    if (!result.songs || result.songs.length === 0) {
+                        this.hasMore = false;
+                        return;
+                    }
+
+                    this.currentPlaylist = [...this.currentPlaylist, ...result.songs];
+                    this.displaySongs();
+                    showStatus(`已加载 ${this.currentPlaylist.length} 首歌曲`);
+                } catch (error) {
+                    showStatus(error.message, true);
+                } finally {
+                    this.isLoading = false;
+                    if (loadMore) {
+                        loadMore.classList.remove('active');
+                    }
+                }
+            },
+
+            displaySongs: function() {
+                const songList = document.getElementById('songList');
+                const emptyState = document.getElementById('emptyState');
+                
+                if (this.currentPlaylist.length === 0) {
+                    songList.classList.remove('active');
+                    emptyState.classList.add('active');
+                    return;
+                }
+
+                songList.classList.add('active');
+                emptyState.classList.remove('active');
+                
+                songList.innerHTML = this.currentPlaylist.map((song, index) => `
+                    <div class="song-item ${song.fee === 1 ? 'vip-song' : ''} ${index === this.currentIndex ? 'active' : ''}" onclick="playlistPlayer.playSong(${index})">
+                        <div class="song-index">${index + 1}</div>
+                        <div class="song-info">
+                            <div class="song-title">
+                                ${song.name}
+                                ${song.fee === 1 ? '<span class="vip-badge">VIP</span>' : ''}
+                            </div>
+                            <div class="song-artist">${song.artists.join('/')}</div>
+                        </div>
+                        <div class="song-duration">${song.duration ? this.formatTime(song.duration) : '--:--'}</div>
+                        <div class="song-controls">
+                            <button class="control-btn ${song.fee === 1 ? 'disabled' : ''}" 
+                                    onclick="event.stopPropagation(); playlistPlayer.playSong(${index})"
+                                    ${song.fee === 1 ? 'disabled title="VIP 专属歌曲"' : ''}>
+                                <i class="fas ${index === this.currentIndex && !this.isPaused ? 'fa-pause' : 'fa-play'}"></i>
+                            </button>
+                        </div>
+                    </div>
+                `).join('') + `
+                    <div id="loadMore" class="load-more">
+                        <div class="loading-spinner">
+                            <span>加载更多歌曲</span>
+                            <div class="dots">
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                            </div>
+                        </div>
+                    </div>`;
+            },
+
+            playSong: async function(index) {
+                if (index === this.currentIndex && this.isPlaying) {
+                    this.togglePlay();
+                    return;
+                }
+
+                try {
+                    const song = this.currentPlaylist[index];
+                    if (!song) {
+                        throw new Error('无效的歌曲');
+                    }
+
+                    // 检查是否是 VIP 歌曲
+                    if (song.fee === 1) {
+                        showStatus('无法播放：VIP 专属歌曲', true);
+                        return;
+                    }
+
+                    showStatus('正在加载音乐...', false, true);
+
+                    // 如果当前有音乐在播放，先停止它
+                    if (this.isPlaying) {
+                        try {
+                            await fetch('/api/music/stop', { method: 'POST' });
+                            this.stopProgressTracking();
+                        } catch (error) {
+                            console.error('停止播放失败:', error);
+                        }
+                    }
+
+                    // 每次播放都重新获取播放地址
+                    const response = await fetch('/api/playlist/play', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            song_id: song.id
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('获取播放地址失败');
+                    }
+
+                    const result = await response.json();
+                    if (!result.url) {
+                        throw new Error('无法获取播放地址');
+                    }
+                    const url = result.url;
+
+                    // 开始播放
+                    const playResponse = await fetch('/api/music/stream', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ url }),
+                    });
+
+                    const data = await playResponse.json();
+                    if (!playResponse.ok) {
+                        throw new Error(data.error || '播放失败');
+                    }
+
+                    if (!data.duration) {
+                        throw new Error('无法获取时长信息');
+                    }
+
+                    this.currentIndex = index;
+                    this.isPlaying = true;
+                    this.isPaused = false;
+                    this.startTime = Date.now();
+                    this.currentPosition = 0;
+                    this.totalDuration = data.duration.TotalSeconds;
+
+                    // 更新界面
+                    this.updateNowPlaying();
+                    this.displaySongs();
+                    this.startProgressTracking();
+
+                    showStatus('正在播放: ' + song.name);
+                } catch (error) {
+                    showStatus(error.message, true);
+                }
+            },
+
+            togglePlay: async function() {
+                if (!this.isPlaying) {
+                    if (this.currentIndex === -1 && this.currentPlaylist.length > 0) {
+                        this.playSong(0);
+                    }
+                    return;
+                }
+
+                try {
+                    const endpoint = this.isPaused ? '/api/music/resume' : '/api/music/pause';
+                    const response = await fetch(endpoint, {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(this.isPaused ? '继续播放失败' : '暂停播放失败');
+                    }
+
+                    this.isPaused = !this.isPaused;
+                    if (this.isPaused) {
+                        const elapsed = (Date.now() - this.startTime) / 1000;
+                        this.currentPosition += elapsed;
+                        this.stopProgressTracking();
+                    } else {
+                        this.startTime = Date.now();
+                        this.startProgressTracking();
+                    }
+
+                    this.updatePlayPauseButton();
+                    this.displaySongs();
+                } catch (error) {
+                    showStatus(error.message, true);
+                }
+            },
+
+            playPrevious: async function() {
+                if (this.currentIndex > 0) {
+                    await this.playSong(this.currentIndex - 1);
+                }
+            },
+
+            playNext: async function() {
+                if (this.currentIndex < this.currentPlaylist.length - 1) {
+                    await this.playSong(this.currentIndex + 1);
+                }
+            },
+
+            updateProgress: function() {
+                if (!this.isPlaying || this.isPaused) return;
+                
+                const now = Date.now();
+                const elapsed = (now - this.startTime) / 1000;
+                const currentTime = this.currentPosition + elapsed;
+                
+                document.getElementById('currentTime').textContent = this.formatTime(currentTime);
+                document.getElementById('totalTime').textContent = this.formatTime(this.totalDuration);
+                
+                if (this.totalDuration > 0) {
+                    const progress = (currentTime / this.totalDuration) * 100;
+                    document.getElementById('progressCurrent').style.width = `${Math.min(progress, 100)}%`;
+
+                    // 自动播放下一首，添加容差值防止边界条件
+                    if (currentTime >= this.totalDuration + 0.5) {
+                        this.stopProgressTracking(); // 先停止进度更新
+                        if (this.currentIndex < this.currentPlaylist.length - 1) {
+                            this.playNext();
+                        } else {
+                            // 如果是最后一首歌，重置播放状态
+                            fetch('/api/music/stop', { method: 'POST' }).catch(console.error);
+                            this.isPlaying = false;
+                            this.isPaused = false;
+                            this.currentPosition = 0;
+                            this.updatePlayPauseButton();
+                            this.displaySongs();
+                        }
+                    }
+                }
+            },
+
+            startProgressTracking: function() {
+                this.progressInterval = setInterval(() => this.updateProgress(), 100);
+            },
+
+            stopProgressTracking: function() {
+                if (this.progressInterval) {
+                    clearInterval(this.progressInterval);
+                    this.progressInterval = null;
+                }
+            },
+
+            updateNowPlaying: function() {
+                const song = this.currentPlaylist[this.currentIndex];
+                if (!song) return;
+
+                const nowPlayingTitle = document.querySelector('.now-playing-title');
+                const nowPlayingArtist = document.querySelector('.now-playing-artist');
+                
+                nowPlayingTitle.textContent = song.name;
+                nowPlayingArtist.textContent = song.artists.join('/');
+                
+                this.updatePlayPauseButton();
+            },
+
+            updatePlayPauseButton: function() {
+                const icon = document.getElementById('playPauseIcon');
+                const animation = document.getElementById('playingAnimation');
+                
+                icon.className = `fas ${this.isPlaying && !this.isPaused ? 'fa-pause' : 'fa-play'}`;
+                
+                if (this.isPlaying && !this.isPaused) {
+                    animation.classList.add('active');
+                } else {
+                    animation.classList.remove('active');
+                }
+            },
+
+            seekTo: async function(position) {
+                if (!this.isPlaying) return;
+                
+                try {
+                    const response = await fetch('/api/music/seek', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ position }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('跳转失败');
+                    }
+
+                    this.currentPosition = position;
+                    this.startTime = Date.now();
+                    
+                    if (this.isPaused) {
+                        this.isPaused = false;
+                        this.startProgressTracking();
+                        this.updatePlayPauseButton();
+                        this.displaySongs();
+                    }
+                } catch (error) {
+                    showStatus('跳转失败: ' + error.message, true);
+                }
+            }
+        };
+
+        function showStatus(message, isError = false, loading = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.style.display = 'block';
+            status.className = 'status' + (isError ? ' error' : loading ? ' loading' : ' success');
+            
+            if (!loading) {
+                setTimeout(() => {
+                    status.style.display = 'none';
+                }, 3000);
+            }
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 音量控制
+            const volumeSlider = document.getElementById('volumeSlider');
+            const volumeValue = document.getElementById('volumeValue');
+            let volumeTimeoutId = null;
+            let lastSuccessfulVolume = null;
+
+            volumeSlider.addEventListener('input', function() {
+                const percentage = Math.round((this.value / 63) * 100);
+                volumeValue.textContent = `${percentage}%`;
+            });
+
+            volumeSlider.addEventListener('change', function() {
+                fetch('/api/volume/set', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ volume: this.value.toString() }),
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('设置音量失败');
+                    }
+                    lastSuccessfulVolume = this.value;
+                })
+                .catch(error => {
+                    console.error('设置音量失败:', error);
+                    // 如果设置失败，恢复到上一个成功的音量
+                    if (lastSuccessfulVolume !== null) {
+                        this.value = lastSuccessfulVolume;
+                        const lastPercentage = Math.round((lastSuccessfulVolume / 63) * 100);
+                        volumeValue.textContent = `${lastPercentage}%`;
+                    }
+                    showStatus('设置音量失败', true);
+                });
+            });
+
+            // 初始化音量
+            fetch('/api/volume/get')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('获取音量失败');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    volumeSlider.value = parseInt(data.volume);
+                    lastSuccessfulVolume = parseInt(data.volume);
+                    const percentage = Math.round((data.volume / 63) * 100);
+                    volumeValue.textContent = `${percentage}%`;
+                })
+                .catch(error => {
+                    console.error('获取音量失败:', error);
+                    showStatus('获取音量失败', true);
+                });
+
+            // 进度条点击跳转和悬停时间显示
+            const progressBar = document.getElementById('progressBar');
+            const progressHoverTime = document.getElementById('progressHoverTime');
+            
+            progressBar.addEventListener('mousemove', function(e) {
+                if (!playlistPlayer.isPlaying) return;
+                
+                const rect = this.getBoundingClientRect();
+                const position = (e.clientX - rect.left) / rect.width;
+                const timePosition = position * playlistPlayer.totalDuration;
+                
+                progressHoverTime.textContent = playlistPlayer.formatTime(timePosition);
+                progressHoverTime.style.left = `${e.clientX - rect.left}px`;
+            });
+
+            progressBar.addEventListener('mouseleave', function() {
+                progressHoverTime.style.opacity = '0';
+            });
+
+            progressBar.addEventListener('mouseenter', function() {
+                if (playlistPlayer.isPlaying) {
+                    progressHoverTime.style.opacity = '1';
+                }
+            });
+
+            progressBar.addEventListener('click', function(e) {
+                if (!playlistPlayer.isPlaying) return;
+                
+                const rect = this.getBoundingClientRect();
+                const position = (e.clientX - rect.left) / rect.width;
+                const newPosition = position * playlistPlayer.totalDuration;
+                playlistPlayer.seekTo(newPosition);
+            });
+
+            // 从 localStorage 恢复上次的输入
+            const lastPlaylistId = localStorage.getItem('lastPlaylistId');
+            if (lastPlaylistId) {
+                document.getElementById('playlistInput').value = lastPlaylistId;
+            }
+
+            // 保存输入到 localStorage
+            document.getElementById('playlistInput').addEventListener('change', function() {
+                localStorage.setItem('lastPlaylistId', this.value);
+            });
+        });
+    </script>
+</body>
+</html> 

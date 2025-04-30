@@ -19,10 +19,8 @@ func RegisterRoutes() {
 
 	// 音乐播放相关路由
 	http.HandleFunc("/api/music/list", api.HandleMusicList)
-	http.HandleFunc("/api/music/play", api.HandlePlayMusic)
 	http.HandleFunc("/api/music/stream", api.HandleStreamPlay)
 	http.HandleFunc("/api/music/stop", api.HandleStreamStop)
-	http.HandleFunc("/api/music/duration", api.HandleGetAudioDuration)
 	http.HandleFunc("/api/music/pause", api.HandlePauseMusic)
 	http.HandleFunc("/api/music/resume", api.HandleResumeMusic)
 	http.HandleFunc("/api/music/seek", api.HandleSeekTo)

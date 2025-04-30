@@ -1,199 +1,143 @@
-﻿# Aku Web
+﻿# AkuRobot Web Interface
 
-Aku Web 是一个基于 Go 语言开发的网页音乐播放器和设备控制系统。它支持本地音乐播放、网易云音乐歌单播放，并提供了设备音量控制和 WiFi 配置等功能。
+一个功能丰富的 Web 音乐播放器和系统管理界面，支持多种音乐播放模式和系统服务管理。
 
-## 功能特性
+## 主要功能
 
-### 音乐播放
-- 本地音乐播放
-  - 支持 MP3、WAV 格式
-  - 文件管理和播放控制
-  - 实时音量调节
-  - 启动音效支持
-- 网易云音乐歌单
-  - 歌单导入和播放
-  - 支持顺序和随机播放
-  - VIP 歌曲标识
-  - 歌手和歌曲信息显示
+### 音乐播放功能
 
-### 设备控制
-- WiFi 配置
-  - AP 热点自动创建
-  - WiFi 连接配置
-  - 网络状态监控
-- 音量控制
-  - 实时音量调节
-  - 音量状态保存
-- 系统服务管理
-  - 服务状态监控
-  - 服务启停控制
+1. **网易云音乐播放器** (NetMusic.html)
+   - 支持网易云音乐歌单导入和播放
+   - 实时歌单加载和动态分页
+   - 完整的播放控制（播放/暂停/上一首/下一首）
+   - 音量控制和进度条拖拽
+   - VIP 歌曲标识
+   - 优雅的加载动画和状态提示
 
-### 界面特性
-- 响应式设计
-- 动态导航页面
-- 直观的播放控制
-- 实时状态反馈
-- 多语言支持（中文/英文）
+2. **本地音乐播放器** (music_local.html)
+   - 支持播放本地音乐文件
+   - 支持 MP3 和 WAV 格式
+   - 基础播放控制功能
 
-## 技术栈
+3. **流媒体播放器** (music_url.html)
+   - 支持在线音乐流播放
+   - 实时音频流控制
 
-### 后端
-- Go 1.21+
-- 标准库
-  - net/http：Web 服务器
-  - encoding/json：JSON 处理
-  - os/exec：系统命令执行
-  - sync：并发控制
-  - log：日志管理
+### 系统管理功能
 
-### 前端
-- HTML5
-- CSS3
-- JavaScript
-  - Fetch API
-  - ES6+ 特性
-  - 响应式设计
+1. **服务管理** (service.html)
+   - 第三方系统服务的状态监控
+   - 服务启动/停止控制
+   - 实时服务输出日志查看
+   - 服务状态实时更新
 
-## 系统要求
-- Linux 系统（推荐 Debian/Ubuntu）
-- Go 1.21 或更高版本
-- mpg123（音频播放）
-- hostapd（AP 热点）
-- curl（网络请求）
-- systemd（服务管理）
+2. **系统监控** (system.html)
+   - 系统信息和硬件状态查看
+   - 系统重启功能
+   - 硬件资源监控
 
-## 安装说明
+## 技术特点
 
-### 1. 克隆项目
-```bash
-git clone [项目地址]
-cd aku-web
-```
+1. **音频播放功能**
+   - 支持多种音频格式
+   - 精确的音量控制
+   - 播放进度控制
+   - 实时状态同步
 
-### 2. 安装依赖
-```bash
-# Debian/Ubuntu
-sudo apt-get update
-sudo apt-get install mpg123 hostapd curl
-```
+2. **用户界面**
+   - 响应式设计
+   - 现代化 UI 界面
+   - 流畅的动画效果
+   - 直观的操作反馈
 
-### 3. 编译项目
-```bash
-# 使用 build.ps1 脚本（Windows）
-./build.ps1
-
-```
-
-## 使用说明
-
-### 启动服务
-```bash
-# 直接运行
-./aku-web -port 80 -dir static
-
-# 或作为系统服务
-sudo systemctl start aku-web
-```
-
-### 访问界面
-打开浏览器访问：`http://设备IP`
-
-### 功能入口
-- `/` - 主页导航
-- `/music_url.html` - 网易云音乐播放器
-- `/music_user.html` - 本地音乐播放器
-- `/ap_config.html` - WiFi 配置页面
-- `/system.html` - 系统服务管理
-- `/service.html` - 服务状态监控
-
-## 项目结构
-```
-aku-web/
-├── main.go          # 主程序入口
-├── internal/        # 内部模块
-│   ├── api/        # API 接口定义
-│   ├── service/    # 业务逻辑
-│   ├── router/     # 路由处理
-│   ├── server/     # 服务器配置
-│   ├── netease/    # 网易云音乐相关
-│   ├── player/     # 音频播放
-│   ├── wifi/       # WiFi 管理
-│   └── config/     # 配置管理
-├── static/         # 静态资源
-│   ├── css/        # 样式文件
-│   ├── js/         # JavaScript 文件
-│   ├── music/      # 本地音乐文件
-│   ├── boot_music/ # 启动音效
-│   ├── icon/       # 图标资源
-│   └── *.html      # 页面文件
-├── release/        # 发布文件
-├── build.ps1       # Windows 构建脚本
-├── create_ap.sh    # Linux AP 创建脚本
-└── README.md       # 项目文档
-```
+3. **后端功能**
+   - RESTful API 设计
+   - 实时事件流处理
+   - 服务状态监控
+   - 文件系统管理
 
 ## API 接口
 
-### 音乐相关
-- `GET /api/music/list` - 获取本地音乐列表
-- `POST /api/music/play` - 播放指定音乐
-- `POST /api/music/stop` - 停止播放
-- `GET /api/playlist/detail` - 获取歌单详情
-- `POST /api/playlist/play` - 播放歌单
+### 音乐相关接口
+- `/api/music/list` - 获取音乐列表
+- `/api/music/stream` - 流媒体播放
+- `/api/music/stop` - 停止播放
+- `/api/music/pause` - 暂停播放
+- `/api/music/resume` - 继续播放
+- `/api/music/seek` - 播放进度控制
+- `/api/volume/get` - 获取音量
+- `/api/volume/set` - 设置音量
 
-### 设备控制
-- `GET /api/volume/get` - 获取当前音量
-- `POST /api/volume/set` - 设置音量
-- `POST /api/ap/config` - 配置 WiFi 连接
-- `GET /api/system/status` - 获取系统状态
-- `POST /api/system/control` - 控制系统服务
+### 网易云音乐接口
+- `/api/playlist/detail` - 获取歌单详情
+- `/api/playlist/play` - 播放歌单歌曲
 
-## 开发指南
+### 系统管理接口
+- `/api/service/start` - 启动服务
+- `/api/service/stop` - 停止服务
+- `/api/service/status` - 获取服务状态
+- `/api/service/output` - 获取服务输出
+- `/api/system/reboot` - 系统重启
 
-### 环境配置
-1. 安装 Go 1.21+
-2. 配置 GOPATH
-3. 安装必要的系统依赖
+## 安装和使用
 
-### 代码规范
-- 遵循 Go 官方代码规范
-- 使用 gofmt 格式化代码
-- 编写单元测试
-- 添加必要的注释
+1. 克隆项目
+```bash
+git clone https://github.com/yourusername/AkuRobot.git
+```
 
-### 提交规范
-- 使用语义化版本号
-- 编写清晰的提交信息
-- 确保代码通过测试
+2. 安装依赖
+```bash
+# 确保系统已安装必要的音频库
+sudo apt-get install mpv
+```
+
+3. 运行服务
+```bash
+go run main.go
+```
+
+4. 访问界面
+打开浏览器访问 `http://localhost:8080`
+
+## 配置说明
+
+主要配置项在 `config` 包中定义：
+- 默认目录设置
+- 服务配置
+- 音频播放器配置
 
 ## 注意事项
 
-1. WiFi 配置功能需要 root 权限
-2. 部分网易云音乐歌曲可能因为版权限制无法播放
-3. 确保设备有足够的存储空间用于缓存音乐文件
-4. 系统服务管理需要 systemd 支持
+1. 网易云音乐功能需要：
+   - 有效的网络连接
+   - 合法的音乐版权
+   - 非 VIP 歌曲限制
 
-## 许可证
-
-[添加许可证信息]
+2. 系统管理功能需要：
+   - 适当的系统权限
+   - 相关服务的安装和配置
 
 ## 贡献指南
 
-欢迎提交 Issue 和 Pull Request。在提交之前，请确保：
-1. 代码符合项目规范
-2. 添加必要的测试
-3. 更新相关文档
+欢迎提交 Issue 和 Pull Request 来帮助改进项目。
+
+## 许可证
+
+[MIT License](LICENSE)
+
+## 作者
+
+[Your Name]
 
 ## 更新日志
-
-### v1.1.0 (最新)
-- 添加系统服务管理功能
-- 优化 WiFi 配置界面
-- 增加启动音效支持
-- 改进错误处理和日志记录
 
 ### v1.0.0
 - 初始版本发布
 - 基础音乐播放功能
-- WiFi 配置功能
-- 设备控制功能
+- 系统管理功能
+
+## 鸣谢
+
+- MPV 播放器
+- 网易云音乐 API

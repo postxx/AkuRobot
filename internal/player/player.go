@@ -99,6 +99,15 @@ func (p *AudioPlayer) GetDuration(url string) (*AudioDuration, error) {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
 
+	// 检查是否为常见的不支持格式
+	lowerUrl := strings.ToLower(url)
+	unsupportedFormats := []string{".wav", ".m4a", ".mp4", ".aac", ".ogg", ".flac", ".wma", ".aiff"}
+	for _, format := range unsupportedFormats {
+		if strings.HasSuffix(lowerUrl, format) {
+			return nil, fmt.Errorf("不支持的音频格式: %s，仅支持MP3格式", format)
+		}
+	}
+
 	// 初始化播放器（如果尚未初始化）
 	if err := p.initPlayer(); err != nil {
 		return nil, fmt.Errorf("初始化播放器失败: %v", err)
@@ -114,6 +123,7 @@ func (p *AudioPlayer) GetDuration(url string) (*AudioDuration, error) {
 	// 读取输出直到文件加载完成
 	buf := make([]byte, 1024)
 	for {
+		log.Printf("读取输出")
 		n, err := p.stdout.Read(buf)
 		if err != nil {
 			return nil, fmt.Errorf("读取输出失败: %v", err)
@@ -198,21 +208,12 @@ func (p *AudioPlayer) GetDuration(url string) (*AudioDuration, error) {
 }
 
 // PlayStream 全局播放流媒体方法
-func PlayStream(url string) error {
+func PlayStream(url string) (*AudioDuration, error) {
 	initDefaultPlayer()
 	if defaultPlayer == nil {
-		return fmt.Errorf("播放器初始化失败")
+		return nil, fmt.Errorf("播放器初始化失败")
 	}
 	return defaultPlayer.PlayStream(url)
-}
-
-// PlayLocalFile 播放本地音乐文件
-func PlayLocalFile(filePath string) error {
-	initDefaultPlayer()
-	if defaultPlayer == nil {
-		return fmt.Errorf("播放器初始化失败")
-	}
-	return defaultPlayer.PlayLocalFile(filePath)
 }
 
 // PausePlayback 暂停播放
@@ -269,16 +270,17 @@ func NewAudioPlayer(cacheDir string) (*AudioPlayer, error) {
 }
 
 // PlayStream 改进的流媒体播放方法
-func (p *AudioPlayer) PlayStream(url string) error {
+func (p *AudioPlayer) PlayStream(url string) (*AudioDuration, error) {
 	log.Printf("[PlayStream] 开始播放，URL: %s", url)
-	// 先获取音频时长信息（在获取锁之前）
-	duration, err := GetAudioDuration(url)
+
+	// 先获取音频时长信息
+	duration, err := p.GetDuration(url)
 	if err != nil {
 		log.Printf("[PlayStream] 获取音频时长失败: %v", err)
-	} else {
-		p.duration = duration
-		log.Printf("[PlayStream] 获取音频时长成功: %.2f秒", duration.TotalSeconds)
+		return nil, err
 	}
+	p.duration = duration
+	log.Printf("[PlayStream] 获取音频时长成功: %.2f秒", duration.TotalSeconds)
 
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
@@ -288,13 +290,13 @@ func (p *AudioPlayer) PlayStream(url string) error {
 	// 开始缓存并获取缓存信息
 	cacheInfo := p.startCaching(url, duration)
 	if cacheInfo == nil {
-		return fmt.Errorf("创建缓存失败")
+		return nil, fmt.Errorf("创建缓存失败")
 	}
 
 	// 初始化播放器
 	if err := p.initPlayer(); err != nil {
 		log.Printf("[PlayStream] 初始化播放器失败: %v", err)
-		return err
+		return nil, err
 	}
 
 	// 等待足够的数据被缓存（至少1MB或文件大小的10%）
@@ -313,13 +315,13 @@ func (p *AudioPlayer) PlayStream(url string) error {
 	// 开始播放
 	log.Printf("开始播放: %s", cacheInfo.Path)
 	if err := p.sendCommand(fmt.Sprintf("LOAD %s", cacheInfo.Path)); err != nil {
-		return fmt.Errorf("加载音频失败: %v", err)
+		return nil, fmt.Errorf("加载音频失败: %v", err)
 	}
 
 	p.currentFile = url
 	p.isPlaying = true
 
-	return nil
+	return duration, nil
 }
 
 // startCaching 开始缓存音频文件
@@ -570,46 +572,6 @@ func (p *AudioPlayer) sendCommand(cmd string) error {
 	}
 	_, err := fmt.Fprintf(p.stdin, "%s\n", cmd)
 	return err
-}
-
-// PlayLocalFile 播放本地文件
-func (p *AudioPlayer) PlayLocalFile(filePath string) error {
-	// 检查文件格式
-	ext := strings.ToLower(filepath.Ext(filePath))
-	if ext != ".mp3" {
-		return fmt.Errorf("不支持的音频格式: %s，仅支持MP3格式", ext)
-	}
-
-	// 获取音频时长信息
-	duration, err := GetAudioDuration(filePath)
-	if err != nil {
-		log.Printf("[PlayLocalFile] 获取音频时长失败: %v", err)
-	} else {
-		p.duration = duration
-		log.Printf("[PlayLocalFile] 获取音频时长成功: %.2f秒", duration.TotalSeconds)
-	}
-
-	p.mutex.Lock()
-	defer p.mutex.Unlock()
-
-	log.Printf("[PlayLocalFile] 开始播放本地文件: %s", filePath)
-
-	// 初始化播放器
-	if err := p.initPlayer(); err != nil {
-		log.Printf("[PlayLocalFile] 初始化播放器失败: %v", err)
-		return err
-	}
-
-	// 开始播放
-	log.Printf("开始播放本地文件: %s", filePath)
-	if err := p.sendCommand(fmt.Sprintf("LOAD %s", filePath)); err != nil {
-		return fmt.Errorf("加载音频失败: %v", err)
-	}
-
-	p.currentFile = filePath
-	p.isPlaying = true
-
-	return nil
 }
 
 // Pause 暂停播放
