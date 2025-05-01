@@ -29,7 +29,7 @@ func RegisterRoutes() {
 	http.HandleFunc("/api/volume/get", api.HandleVolumeGet)
 	http.HandleFunc("/api/volume/set", api.HandleVolumeSet)
 
-	// 歌单相关路由
+	// 网易云歌单相关路由
 	http.HandleFunc("/api/playlist/detail", api.HandlePlaylistDetail)
 	http.HandleFunc("/api/playlist/play", api.HandlePlaylistPlay)
 

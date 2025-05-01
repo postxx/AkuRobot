@@ -838,7 +838,7 @@
             <div class="volume-control">
                 <i class="fas fa-volume-up"></i>
                 <div class="volume-slider-container">
-                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="63" step="1">
+                    <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" step="1">
                     <span class="volume-value" id="volumeValue">100%</span>
                 </div>
             </div>
@@ -919,10 +919,11 @@
                 }
 
                 const playlistId = document.getElementById('playlistInput').value;
-                const currentLength = this.currentPlaylist.length;
+                const currentPage = Math.floor(this.currentPlaylist.length / 20) + 1;
+                const pageSize = 20;
 
                 try {
-                    const response = await fetch(`/api/playlist/detail?id=${playlistId}&offset=${currentLength}`);
+                    const response = await fetch(`/api/playlist/detail?id=${playlistId}&page=${currentPage}&pageSize=${pageSize}`);
                     if (!response.ok) {
                         throw new Error('加载更多歌曲失败');
                     }
@@ -930,6 +931,9 @@
                     const result = await response.json();
                     if (!result.songs || result.songs.length === 0) {
                         this.hasMore = false;
+                        if (loadMore) {
+                            loadMore.remove();
+                        }
                         return;
                     }
 
@@ -1240,24 +1244,45 @@
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
+            // 将滑块值（0-100）转换为实际音量值（0-63）的对数映射函数
+            function sliderToVolume(sliderValue) {
+                if (sliderValue === 0) return 0;
+                const a = 3;      // 控制低值区陡峭度，降低以减小低音量区域的调节幅度
+                const k = 21.33;  // 缩放系数
+                return Math.round(k * Math.log10(a * sliderValue + 1));
+            }
+
+            // 将实际音量值（0-63）转换为滑块值（0-100）的反向映射函数
+            function volumeToSlider(volumeValue) {
+                if (volumeValue === 0) return 0;
+                const a = 3;      // 保持与 sliderToVolume 相同的参数
+                const k = 21.33;
+                return Math.round((Math.pow(10, volumeValue / k) - 1) / a);
+            }
+
             // 音量控制
             const volumeSlider = document.getElementById('volumeSlider');
             const volumeValue = document.getElementById('volumeValue');
-            let volumeTimeoutId = null;
             let lastSuccessfulVolume = null;
 
+            // 修改滑块范围为0-100
+            volumeSlider.min = 0;
+            volumeSlider.max = 100;
+            volumeSlider.step = 1;
+
             volumeSlider.addEventListener('input', function() {
-                const percentage = Math.round((this.value / 63) * 100);
-                volumeValue.textContent = `${percentage}%`;
+                const actualVolume = sliderToVolume(parseInt(this.value));
+                volumeValue.textContent = `${this.value}%`;
             });
 
             volumeSlider.addEventListener('change', function() {
+                const actualVolume = sliderToVolume(parseInt(this.value));
                 fetch('/api/volume/set', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ volume: this.value.toString() }),
+                    body: JSON.stringify({ volume: actualVolume.toString() }),
                 })
                 .then(response => {
                     if (!response.ok) {
@@ -1267,11 +1292,9 @@
                 })
                 .catch(error => {
                     console.error('设置音量失败:', error);
-                    // 如果设置失败，恢复到上一个成功的音量
                     if (lastSuccessfulVolume !== null) {
                         this.value = lastSuccessfulVolume;
-                        const lastPercentage = Math.round((lastSuccessfulVolume / 63) * 100);
-                        volumeValue.textContent = `${lastPercentage}%`;
+                        volumeValue.textContent = `${lastSuccessfulVolume}%`;
                     }
                     showStatus('设置音量失败', true);
                 });
@@ -1286,10 +1309,10 @@
                     return response.json();
                 })
                 .then(data => {
-                    volumeSlider.value = parseInt(data.volume);
-                    lastSuccessfulVolume = parseInt(data.volume);
-                    const percentage = Math.round((data.volume / 63) * 100);
-                    volumeValue.textContent = `${percentage}%`;
+                    const sliderValue = volumeToSlider(parseInt(data.volume));
+                    volumeSlider.value = sliderValue;
+                    lastSuccessfulVolume = sliderValue;
+                    volumeValue.textContent = `${sliderValue}%`;
                 })
                 .catch(error => {
                     console.error('获取音量失败:', error);
