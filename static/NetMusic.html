@@ -1244,20 +1244,20 @@
 
         // 初始化
         document.addEventListener('DOMContentLoaded', function() {
-            // 将滑块值（0-100）转换为实际音量值（0-63）的对数映射函数
+            // 将滑块值（0-100）转换为实际音量值（0-63）的平方根映射函数
             function sliderToVolume(sliderValue) {
                 if (sliderValue === 0) return 0;
-                const a = 3;      // 控制低值区陡峭度，降低以减小低音量区域的调节幅度
-                const k = 21.33;  // 缩放系数
-                return Math.round(k * Math.log10(a * sliderValue + 1));
+                // 使用平方根函数进行映射，k用于调整最大值到63
+                const k = 6.3;  // 63 / sqrt(100)
+                return Math.round(k * Math.sqrt(sliderValue));
             }
 
             // 将实际音量值（0-63）转换为滑块值（0-100）的反向映射函数
             function volumeToSlider(volumeValue) {
                 if (volumeValue === 0) return 0;
-                const a = 3;      // 保持与 sliderToVolume 相同的参数
-                const k = 21.33;
-                return Math.round((Math.pow(10, volumeValue / k) - 1) / a);
+                const k = 6.3;  // 与sliderToVolume使用相同的k
+                // 使用平方函数进行反向映射
+                return Math.round(Math.pow(volumeValue / k, 2));
             }
 
             // 音量控制

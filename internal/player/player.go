@@ -113,76 +113,74 @@ func (p *AudioPlayer) GetDuration(url string) (*AudioDuration, error) {
 		return nil, fmt.Errorf("初始化播放器失败: %v", err)
 	}
 
-	// 发送加载命令
-	if err := p.sendCommand(fmt.Sprintf("LOAD %s", url)); err != nil {
-		return nil, fmt.Errorf("发送加载命令失败: %v", err)
+	// 一次性发送所有需要的命令
+	commands := []string{
+		fmt.Sprintf("LOAD %s", url),
+		"SILENCE",
+		"FORMAT",
+		"SAMPLE",
 	}
-	// 禁止无关信息输出
-	p.sendCommand("SILENCE")
 
-	// 读取输出直到文件加载完成
+	for _, cmd := range commands {
+		if err := p.sendCommand(cmd); err != nil {
+			return nil, fmt.Errorf("发送命令 %s 失败: %v", cmd, err)
+		}
+	}
+
+	// 读取并解析输出
 	buf := make([]byte, 1024)
-	for {
-		log.Printf("读取输出")
+	var sampleRate int
+	var totalSamples int64
+	formatFound := false
+	sampleFound := false
+
+	// 读取直到获取所需的所有信息
+	for attempts := 0; attempts < 20; attempts++ { // 设置最大尝试次数，避免无限循环
 		n, err := p.stdout.Read(buf)
 		if err != nil {
 			return nil, fmt.Errorf("读取输出失败: %v", err)
 		}
+
 		output := string(buf[:n])
-		if strings.Contains(output, "@S") {
+		log.Printf("[Debug] 收到输出: %s", output)
+		lines := strings.Split(output, "\n")
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			log.Printf("[Debug] 处理行: %s", line)
+			// 检查格式信息
+			if strings.HasPrefix(line, "@F") {
+				parts := strings.Fields(line)
+				if len(parts) >= 2 {
+					sampleRate, _ = strconv.Atoi(parts[1])
+					formatFound = true
+					log.Printf("[Debug] 解析到采样率: %d", sampleRate)
+				}
+			}
+
+			// 检查采样信息
+			if strings.HasPrefix(line, "@S") {
+				parts := strings.Fields(line)
+				if len(parts) >= 3 {
+					totalSamples, _ = strconv.ParseInt(parts[2], 10, 64)
+					sampleFound = true
+					log.Printf("[Debug] 解析到总采样数: %d", totalSamples)
+				}
+			}
+		}
+
+		// 如果已经找到所有需要的信息，就退出循环
+		if formatFound && sampleFound {
 			break
-		}
-	}
-
-	var sampleRate int
-	var totalSamples int64
-
-	// 获取格式信息
-	if err := p.sendCommand("FORMAT"); err != nil {
-		return nil, fmt.Errorf("获取格式信息失败: %v", err)
-	}
-
-	// 读取格式信息
-	n, err := p.stdout.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("读取格式信息失败: %v", err)
-	}
-	output := string(buf[:n])
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "@F") {
-			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				sampleRate, _ = strconv.Atoi(parts[1])
-				break
-			}
-		}
-	}
-
-	// 获取采样信息
-	if err := p.sendCommand("SAMPLE"); err != nil {
-		return nil, fmt.Errorf("获取采样信息失败: %v", err)
-	}
-
-	// 读取采样信息
-	n, err = p.stdout.Read(buf)
-	if err != nil {
-		return nil, fmt.Errorf("读取采样信息失败: %v", err)
-	}
-	output = string(buf[:n])
-	lines = strings.Split(output, "\n")
-	for _, line := range lines {
-		if strings.HasPrefix(line, "@S") {
-			parts := strings.Fields(line)
-			if len(parts) >= 3 {
-				totalSamples, _ = strconv.ParseInt(parts[2], 10, 64)
-				break
-			}
 		}
 	}
 
 	// 检查是否获取到所需信息
 	if sampleRate == 0 || totalSamples == 0 {
+		log.Printf("[Debug] 错误：数据不完整 - 采样率: %d, 总采样数: %d", sampleRate, totalSamples)
 		return nil, fmt.Errorf("无法获取完整的音频信息")
 	}
 
