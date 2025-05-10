@@ -44,6 +44,11 @@ func RegisterRoutes() {
 	http.HandleFunc("/api/system/info", api.HandleSystemInfo)
 	http.HandleFunc("/api/system/sync-time", api.HandleSyncTime)
 
+	// 显示相关路由
+	http.HandleFunc("/api/display/text", api.HandleShowText)
+	http.HandleFunc("/api/display/image", api.HandleShowImage)
+	http.HandleFunc("/api/display/gif", api.HandleShowGif)
+
 	// 静态文件服务
 	fs := http.FileServer(http.Dir("static"))
 	http.Handle("/", fs)

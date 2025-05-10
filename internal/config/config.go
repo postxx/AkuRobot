@@ -23,5 +23,4 @@ const (
 	ShowImgPath   = "/opt/aku/xiaozhi/show_image"        // 显示图片程序路径
 	ShowGifPath   = "/opt/aku/xiaozhi/play_bmp_sequence" // 播放GIF动画程序路径
 	ShowTextPath  = "/opt/aku/xiaozhi/show_text"         // 显示文字程序路径
-	ShowVideoPath = "/opt/aku/xiaozhi/play_video"        // 播放视频程序路径
 )

@@ -235,6 +235,8 @@ func HandleGetHtmlFiles(w http.ResponseWriter, r *http.Request) {
 				description = "流媒体播放器"
 			case "music_local.html":
 				description = "本地音乐文件播放器"
+			case "display.html":
+				description = "屏幕显示控制中心"
 			case "NetMusic.html":
 				description = "网易云音乐播放器"
 			case "index.html":

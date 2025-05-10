@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aku-web/internal/api"
 	"aku-web/internal/config"
 	"aku-web/internal/server"
 	"fmt"
@@ -38,7 +39,6 @@ func printColorized(color, format string, a ...interface{}) {
 	fmt.Printf(color+format+colorReset+"\n", a...)
 }
 
-
 func main() {
 	// 清屏
 	fmt.Print("\033[H\033[2J")
@@ -58,7 +58,6 @@ func main() {
 			log.SetOutput(mw)
 		}
 	}
-
 
 	// 打印系统信息
 	printColorized(colorMagenta, "\n=== Aku Web 启动信息 ===")
@@ -80,6 +79,11 @@ func main() {
 
 	// 打印分隔线
 	printColorized(colorMagenta, "\n"+strings.Repeat("=", 50))
+
+	// 初始化显示管理器
+	if err := api.InitDisplayManager("/tmp/aku_display"); err != nil {
+		log.Fatalf("初始化显示管理器失败: %v", err)
+	}
 
 	// 启动HTTP服务器
 	if err := server.Start(); err != nil {

@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>显示控制</title>
+    <link href="https://unpkg.com/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- 使用新的GIF解析库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/omggif@1.0.10/omggif.min.js"></script>
+    <style>
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .custom-file-input::-webkit-file-upload-button {
+            visibility: hidden;
+        }
+        .custom-file-input::before {
+            content: '选择文件';
+            display: inline-block;
+            background: linear-gradient(to bottom, #f9f9f9 0%, #e3e3e3 100%);
+            border: 1px solid #999;
+            border-radius: 3px;
+            padding: 5px 8px;
+            outline: none;
+            white-space: nowrap;
+            cursor: pointer;
+            text-shadow: 1px 1px #fff;
+            font-weight: 700;
+            font-size: 10pt;
+        }
+        .custom-file-input:hover::before {
+            border-color: black;
+        }
+        canvas {
+            display: none;
+        }
+        /* 添加基础样式修复 */
+        input, select {
+            border: 1px solid #e5e7eb;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        /* 添加预览图片网格样式 */
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        .preview-grid img {
+            width: 100%;
+            height: 60px;
+            object-fit: contain;
+            background: #f3f4f6;
+            border-radius: 4px;
+            padding: 2px;
+        }
+        .preview-container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">显示控制面板</h1>
+        
+        <!-- 标签页按钮 -->
+        <div class="flex justify-center mb-6">
+            <button onclick="showTab('text')" class="mx-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none">文字显示</button>
+            <button onclick="showTab('image')" class="mx-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none">图片显示</button>
+            <button onclick="showTab('gif')" class="mx-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none">动图显示</button>
+        </div>
+
+        <!-- 隐藏的canvas用于图片转换 -->
+        <canvas id="imageCanvas"></canvas>
+
+        <!-- 文字显示面板 -->
+        <div id="text-panel" class="tab-content active bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">文字显示</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">显示文字</label>
+                    <input type="text" id="display-text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">字体大小</label>
+                    <input type="number" id="font-size" value="24" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">文字颜色</label>
+                    <input type="color" id="text-color" value="#ffffff" class="mt-1 block rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">水平对齐</label>
+                        <select id="h-align" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="0">左对齐</option>
+                            <option value="1" selected>居中</option>
+                            <option value="2">右对齐</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">垂直对齐</label>
+                        <select id="v-align" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="0">顶部</option>
+                            <option value="1" selected>居中</option>
+                            <option value="2">底部</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="showText()" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none">显示文字</button>
+            </div>
+        </div>
+
+        <!-- 图片显示面板 -->
+        <div id="image-panel" class="tab-content bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">图片显示</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">选择图片</label>
+                    <input type="file" id="image-file" accept="image/*" class="mt-1 block w-full custom-file-input">
+                </div>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                    <img id="image-preview" class="max-h-48 mx-auto hidden">
+                    <p id="drag-text" class="text-gray-500">拖放图片到此处或点击选择</p>
+                </div>
+                <button onclick="showImage()" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none">显示图片</button>
+            </div>
+        </div>
+
+        <!-- 动图显示面板 -->
+        <div id="gif-panel" class="tab-content bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-semibold mb-4">动图显示</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">选择图片序列</label>
+                    <input type="file" id="gif-files" accept="image/*, image/gif" multiple class="mt-1 block w-full custom-file-input">
+                </div>
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-2">
+                    <div class="preview-container">
+                        <div id="gif-preview" class="preview-grid"></div>
+                        <p id="gif-drag-text" class="text-gray-500 text-center text-sm mt-2">拖放多张图片到此处或点击选择</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">帧延迟(ms)</label>
+                        <input type="number" id="frame-delay" value="100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">循环播放</label>
+                        <select id="loop-play" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="true">是</option>
+                            <option value="false">否</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="showGif()" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none">显示动图</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 调整图片尺寸，保持宽高比
+        function calculateAspectRatioFit(srcWidth, srcHeight, maxWidth, maxHeight) {
+            const ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
+            return {
+                width: Math.floor(srcWidth * ratio),
+                height: Math.floor(srcHeight * ratio)
+            };
+        }
+
+        // 图片转换为JPG格式
+        async function convertToJpg(file) {
+            if (!file || !(file instanceof File)) {
+                throw new Error('无效的文件对象');
+            }
+
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                throw new Error('文件不是图片格式');
+            }
+
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+
+                // 添加跨域支持
+                img.crossOrigin = 'anonymous';
+
+                img.onload = () => {
+                    try {
+                        console.log('图片加载成功:', {
+                            width: img.width,
+                            height: img.height,
+                            src: objectUrl
+                        });
+
+                        const canvas = document.getElementById('imageCanvas');
+                        if (!canvas) {
+                            throw new Error('找不到 canvas 元素');
+                        }
+
+                        // 计算调整后的尺寸
+                        const dimensions = calculateAspectRatioFit(img.width, img.height, 162, 132);
+                        canvas.width = dimensions.width;
+                        canvas.height = dimensions.height;
+
+                        console.log('调整后尺寸:', dimensions);
+                        
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            throw new Error('无法获取 canvas 上下文');
+                        }
+
+                        // 设置白色背景
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        // 绘制调整大小后的图片
+                        ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+                        
+                        // 使用 Promise 包装 toBlob 调用
+                        canvas.toBlob(
+                            (blob) => {
+                                if (!blob) {
+                                    reject(new Error('转换为 JPG 失败'));
+                                    return;
+                                }
+                                const jpgFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.jpg'), {
+                                    type: 'image/jpeg'
+                                });
+                                console.log('JPG转换成功:', {
+                                    name: jpgFile.name,
+                                    size: jpgFile.size,
+                                    type: jpgFile.type
+                                });
+                                resolve(jpgFile);
+                            },
+                            'image/jpeg',
+                            0.92
+                        );
+                    } catch (error) {
+                        console.error('图片处理失败:', error);
+                        reject(error);
+                    } finally {
+                        // 清理 URL 对象
+                        URL.revokeObjectURL(objectUrl);
+                    }
+                };
+
+                img.onerror = (error) => {
+                    console.error('图片加载失败:', error);
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error(`图片加载失败: ${file.name}`));
+                };
+
+                console.log('开始加载图片:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+
+                img.src = objectUrl;
+            });
+        }
+
+        // 图片转换为BMP格式
+        async function convertToBmp(file) {
+            if (!file || !(file instanceof File)) {
+                throw new Error('无效的文件对象');
+            }
+
+            // 检查文件类型
+            if (!file.type.startsWith('image/')) {
+                throw new Error('文件不是图片格式');
+            }
+
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const objectUrl = URL.createObjectURL(file);
+
+                // 添加跨域支持
+                img.crossOrigin = 'anonymous';
+
+                img.onload = () => {
+                    try {
+                        console.log('图片加载成功:', {
+                            width: img.width,
+                            height: img.height,
+                            src: objectUrl
+                        });
+
+                        const canvas = document.getElementById('imageCanvas');
+                        if (!canvas) {
+                            throw new Error('找不到 canvas 元素');
+                        }
+
+                        // 计算调整后的尺寸
+                        const dimensions = calculateAspectRatioFit(img.width, img.height, 162, 132);
+                        canvas.width = dimensions.width;
+                        canvas.height = dimensions.height;
+
+                        console.log('调整后尺寸:', dimensions);
+                        
+                        const ctx = canvas.getContext('2d');
+                        if (!ctx) {
+                            throw new Error('无法获取 canvas 上下文');
+                        }
+
+                        // 设置白色背景
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        
+                        // 绘制调整大小后的图片
+                        ctx.drawImage(img, 0, 0, dimensions.width, dimensions.height);
+                        
+                        // 使用 Promise 包装 toBlob 调用
+                        canvas.toBlob(
+                            (blob) => {
+                                if (!blob) {
+                                    reject(new Error('转换为 BMP 失败'));
+                                    return;
+                                }
+                                const bmpFile = new File([blob], file.name.replace(/\.[^/.]+$/, '.bmp'), {
+                                    type: 'image/bmp'
+                                });
+                                console.log('BMP转换成功:', {
+                                    name: bmpFile.name,
+                                    size: bmpFile.size,
+                                    type: bmpFile.type
+                                });
+                                resolve(bmpFile);
+                            },
+                            'image/bmp'
+                        );
+                    } catch (error) {
+                        console.error('图片处理失败:', error);
+                        reject(error);
+                    } finally {
+                        // 清理 URL 对象
+                        URL.revokeObjectURL(objectUrl);
+                    }
+                };
+
+                img.onerror = (error) => {
+                    console.error('图片加载失败:', error);
+                    URL.revokeObjectURL(objectUrl);
+                    reject(new Error(`图片加载失败: ${file.name}`));
+                };
+
+                console.log('开始加载图片:', {
+                    name: file.name,
+                    size: file.size,
+                    type: file.type
+                });
+
+                img.src = objectUrl;
+            });
+        }
+
+        // 标签页切换
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.getElementById(tabName + '-panel').classList.add('active');
+        }
+
+        // 显示文字
+        function showText() {
+            const text = document.getElementById('display-text').value;
+            const fontSize = document.getElementById('font-size').value;
+            const colorHex = document.getElementById('text-color').value;
+            const hAlign = document.getElementById('h-align').value;
+            const vAlign = document.getElementById('v-align').value;
+
+            // 将HTML颜色值(#RRGGBB)转换为0xFFFF格式
+            // 1. 去掉#号
+            // 2. 提取RGB值
+            // 3. 转换为0xFFFF格式 (RGB565: 5位红色，6位绿色，5位蓝色)
+            const r = parseInt(colorHex.slice(1, 3), 16);
+            const g = parseInt(colorHex.slice(3, 5), 16);
+            const b = parseInt(colorHex.slice(5, 7), 16);
+            
+            // RGB565转换：
+            // Red: 5位，范围0-31 (左移11位)
+            // Green: 6位，范围0-63 (左移5位)
+            // Blue: 5位，范围0-31
+            const r5 = (r * 31 / 255) << 11;
+            const g6 = (g * 63 / 255) << 5;
+            const b5 = (b * 31 / 255);
+            
+            // 组合RGB565值
+            const color = r5 | g6 | b5;
+
+            console.log('Color conversion:', {
+                original: colorHex,
+                rgb: {r, g, b},
+                rgb565: {r5, g6, b5},
+                final: '0x' + color.toString(16).toUpperCase().padStart(4, '0')
+            });
+
+            fetch('/api/display/text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    text: text,
+                    fontSize: parseInt(fontSize),
+                    color: '0x' + color.toString(16).toUpperCase().padStart(4, '0'),
+                    hAlign: parseInt(hAlign),
+                    vAlign: parseInt(vAlign)
+                })
+            }).catch(error => console.error('Error:', error));
+        }
+
+        // 显示图片
+        async function showImage() {
+            const imageInput = document.getElementById('image-file');
+            const imageFile = imageInput.files[0];
+            
+            if (!imageFile) {
+                alert('请选择图片文件');
+                return;
+            }
+
+            try {
+                console.log('开始处理图片:', imageFile.name);
+                const jpgFile = await convertToJpg(imageFile);
+                
+                const formData = new FormData();
+                formData.append('image', jpgFile);
+
+                const response = await fetch('/api/display/image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`上传失败: ${response.status} ${response.statusText}`);
+                }
+
+                console.log('图片上传成功');
+            } catch (error) {
+                console.error('图片处理失败:', error);
+                alert(`图片处理失败: ${error.message}`);
+            }
+        }
+
+        // 解析GIF文件为图片序列
+        async function parseGif(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        // 解析GIF文件
+                        const arrayBuffer = e.target.result;
+                        const view = new Uint8Array(arrayBuffer);
+                        const gr = new GifReader(view);
+                        
+                        const frameCount = gr.numFrames();
+                        console.log('GIF解析结果:', {
+                            frameCount: frameCount,
+                            dimensions: {
+                                width: gr.width,
+                                height: gr.height
+                            }
+                        });
+
+                        // 创建临时canvas用于转换帧
+                        const tempCanvas = document.createElement('canvas');
+                        const tempCtx = tempCanvas.getContext('2d');
+
+                        // 调整canvas大小
+                        const dimensions = calculateAspectRatioFit(
+                            gr.width,
+                            gr.height,
+                            162,
+                            132
+                        );
+                        tempCanvas.width = dimensions.width;
+                        tempCanvas.height = dimensions.height;
+
+                        // 创建用于合成的canvas
+                        const frameCanvas = document.createElement('canvas');
+                        const frameCtx = frameCanvas.getContext('2d');
+                        frameCanvas.width = gr.width;
+                        frameCanvas.height = gr.height;
+
+                        // 转换所有帧
+                        const bmpFrames = [];
+                        let averageDelay = 0;
+                        
+                        // 用于存储像素数据的缓冲区
+                        const pixels = new Uint8ClampedArray(gr.width * gr.height * 4);
+
+                        for (let i = 0; i < frameCount; i++) {
+                            // 获取帧信息
+                            const frameInfo = gr.frameInfo(i);
+                            averageDelay += frameInfo.delay * 10; // 转换为毫秒
+
+                            // 解码帧数据
+                            gr.decodeAndBlitFrameRGBA(i, pixels);
+                            
+                            // 创建ImageData
+                            const imageData = new ImageData(pixels, gr.width, gr.height);
+                            
+                            // 清除并绘制到frame canvas
+                            frameCtx.clearRect(0, 0, frameCanvas.width, frameCanvas.height);
+                            frameCtx.putImageData(imageData, 0, 0);
+
+                            // 调整大小并绘制到最终画布
+                            tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                            tempCtx.drawImage(
+                                frameCanvas,
+                                0,
+                                0,
+                                dimensions.width,
+                                dimensions.height
+                            );
+
+                            // 转换为BMP
+                            const bmpBlob = await new Promise(resolve =>
+                                tempCanvas.toBlob(resolve, 'image/bmp')
+                            );
+
+                            bmpFrames.push(
+                                new File([bmpBlob], `frame${i}.bmp`, {
+                                    type: 'image/bmp'
+                                })
+                            );
+
+                            console.log(`处理第 ${i + 1}/${frameCount} 帧`);
+                        }
+
+                        // 计算平均延迟时间
+                        averageDelay = Math.round(averageDelay / frameCount);
+
+                        console.log('GIF处理完成:', {
+                            frameCount: bmpFrames.length,
+                            averageDelay: averageDelay
+                        });
+
+                        resolve({
+                            frames: bmpFrames,
+                            delay: averageDelay || 100 // 使用平均延迟时间，如果为0则使用默认值100
+                        });
+                    } catch (error) {
+                        console.error('GIF解析失败:', error);
+                        reject(error);
+                    }
+                };
+
+                reader.onerror = () => {
+                    console.error('GIF文件读取失败');
+                    reject(new Error('GIF文件读取失败'));
+                };
+
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 显示动图
+        async function showGif() {
+            const filesInput = document.getElementById('gif-files');
+            const files = filesInput.files;
+            
+            if (files.length === 0) {
+                alert('请选择图片文件');
+                return;
+            }
+
+            try {
+                console.log('开始处理动图序列');
+                const formData = new FormData();
+                
+                // 检查是否是单个GIF文件
+                if (files.length === 1 && files[0].type === 'image/gif') {
+                    console.log('检测到GIF文件，开始解析帧');
+                    const { frames, delay } = await parseGif(files[0]);
+                    console.log(`解析完成，共 ${frames.length} 帧`);
+                    
+                    // 使用GIF中提取的延迟时间
+                    document.getElementById('frame-delay').value = delay;
+                    
+                    // 添加所有帧到表单
+                    frames.forEach(frame => formData.append('frames', frame));
+                } else {
+                    // 处理多个独立图片文件
+                    console.log(`处理 ${files.length} 张独立图片`);
+                    for (let i = 0; i < files.length; i++) {
+                        console.log(`处理第 ${i + 1}/${files.length} 张图片`);
+                        const bmpFile = await convertToBmp(files[i]);
+                        formData.append('frames', bmpFile);
+                    }
+                }
+                
+                formData.append('delay', document.getElementById('frame-delay').value);
+                formData.append('loop', document.getElementById('loop-play').value);
+
+                const response = await fetch('/api/display/gif', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error(`上传失败: ${response.status} ${response.statusText}`);
+                }
+
+                console.log('动图上传成功');
+            } catch (error) {
+                console.error('动图处理失败:', error);
+                alert(`动图处理失败: ${error.message}`);
+            }
+        }
+
+        // 图片预览
+        document.getElementById('image-file').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    const jpgFile = await convertToJpg(file);
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const preview = document.getElementById('image-preview');
+                        preview.src = e.target.result;
+                        preview.classList.remove('hidden');
+                        document.getElementById('drag-text').classList.add('hidden');
+                    };
+                    reader.readAsDataURL(jpgFile);
+                } catch (error) {
+                    console.error('预览生成失败:', error);
+                }
+            }
+        });
+
+        // 动图预览
+        document.getElementById('gif-files').addEventListener('change', async function(e) {
+            const files = e.target.files;
+            const preview = document.getElementById('gif-preview');
+            preview.innerHTML = '';
+            document.getElementById('gif-drag-text').style.display = files.length ? 'none' : 'block';
+
+            try {
+                if (files.length === 1 && files[0].type === 'image/gif') {
+                    // GIF文件预览
+                    const { frames } = await parseGif(files[0]);
+                    for (const frame of frames) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'w-full h-24 object-contain';
+                            preview.appendChild(img);
+                        };
+                        reader.readAsDataURL(frame);
+                    }
+                } else {
+                    // 多个独立图片预览
+                    for (let i = 0; i < files.length; i++) {
+                        const bmpFile = await convertToBmp(files[i]);
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'w-full h-24 object-contain';
+                            preview.appendChild(img);
+                        };
+                        reader.readAsDataURL(bmpFile);
+                    }
+                }
+            } catch (error) {
+                console.error('预览生成失败:', error);
+                alert(`预览生成失败: ${error.message}`);
+            }
+        });
+
+        // 拖放处理
+        ['image-panel', 'gif-panel'].forEach(id => {
+            const panel = document.getElementById(id);
+            panel.addEventListener('dragover', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                panel.querySelector('.border-dashed').classList.add('border-blue-500');
+            });
+
+            panel.addEventListener('dragleave', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                panel.querySelector('.border-dashed').classList.remove('border-blue-500');
+            });
+
+            panel.addEventListener('drop', e => {
+                e.preventDefault();
+                e.stopPropagation();
+                panel.querySelector('.border-dashed').classList.remove('border-blue-500');
+                
+                const dt = e.dataTransfer;
+                const files = dt.files;fe
+
+                if (id === 'image-panel' && files.length === 1) {
+                    document.getElementById('image-file').files = files;
+                    const event = new Event('change');
+                    document.getElementById('image-file').dispatchEvent(event);
+                } else if (id === 'gif-panel' && files.length > 0) {
+                    document.getElementById('gif-files').files = files;
+                    const event = new Event('change');
+                    document.getElementById('gif-files').dispatchEvent(event);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 
